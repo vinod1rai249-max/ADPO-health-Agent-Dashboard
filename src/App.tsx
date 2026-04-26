@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Download, Github, Database, FileText, Code, CheckCircle, Server, Activity, ShieldCheck, ExternalLink, AlertTriangle, Loader2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -12,24 +12,29 @@ export default function App() {
   const contentRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const handlePrint = async () => {
+  const handleDownloadPdf = async () => {
     if (!contentRef.current) return;
     
     setIsGenerating(true);
     try {
       const element = contentRef.current;
+      
+      // Temporarily hide the actions bar during capture
       const actionsBar = document.getElementById('actions-bar');
       if (actionsBar) actionsBar.style.display = 'none';
       
       const canvas = await html2canvas(element, { 
-        scale: 2,
+        scale: 2, // Higher scale for better resolution
         useCORS: true,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#f8fafc', // match bg-slate-50
+        logging: false,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight
       });
       
       if (actionsBar) actionsBar.style.display = 'flex';
       
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
@@ -45,20 +50,20 @@ export default function App() {
       let position = 0;
       let heightLeft = renderHeight;
       
-      pdf.addImage(imgData, 'PNG', 0, position, renderWidth, renderHeight);
+      pdf.addImage(imgData, 'JPEG', 0, position, renderWidth, renderHeight);
       heightLeft -= pdfHeight;
       
       while (heightLeft > 0) {
         position = heightLeft - renderHeight;
         pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, renderWidth, renderHeight);
+        pdf.addImage(imgData, 'JPEG', 0, position, renderWidth, renderHeight);
         heightLeft -= pdfHeight;
       }
       
       pdf.save('ADPO_Healthcare_Documentation.pdf');
     } catch (error) {
       console.error('Error generating PDF:', error);
-      window.print(); // Fallback
+      alert('Generating PDF failed. Please try opening the app in a new tab and printing to PDF.');
     } finally {
       setIsGenerating(false);
     }
@@ -66,31 +71,31 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans py-8 px-4 sm:px-6 lg:px-8 print:bg-white print:py-0 print:px-0 box-border">
-      <div ref={contentRef} className="max-w-5xl mx-auto space-y-10 print:space-y-6">
+      <div ref={contentRef} className="max-w-5xl mx-auto space-y-10 print:space-y-6 bg-slate-50 pb-8">
         
         {/* Actions Bar - Hidden on print */}
-        <div id="actions-bar" className="flex flex-col items-end gap-2 print:hidden mb-2">
+        <div id="actions-bar" className="flex flex-col items-end gap-2 print:hidden mb-2 pt-2">
           <div className="flex items-center gap-3">
             <a 
-              href="https://adpo-health-agent-dashboard.vercel.app/"
+              href="https://adpo-dashboard-6kwsju4cmq-uc.a.run.app/"
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-[11px] font-bold tracking-wide shadow-lg shadow-blue-200 transition-colors uppercase"
             >
               <ExternalLink size={16} />
-              Open Live Dashboard (Vercel)
+              Open Live App
             </a>
             <button 
-              onClick={handlePrint}
+              onClick={handleDownloadPdf}
               disabled={isGenerating}
               className="inline-flex items-center gap-2 px-6 py-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-full text-[11px] font-bold tracking-wide shadow-lg shadow-slate-200 transition-colors uppercase"
             >
               {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-              {isGenerating ? 'Generating PDF...' : 'Download PDF directly'}
+              {isGenerating ? 'Generating PDF...' : 'Download PDF'}
             </button>
           </div>
           <p className="text-[10px] text-slate-500 font-medium">
-            *Downloads directly. If nothing happens, click the ↗️ "Open in new tab" icon in AI Studio first.
+            *Downloads directly using jsPDF.
           </p>
         </div>
 
@@ -145,12 +150,12 @@ export default function App() {
             </div>
             <div className="shrink-0 w-full md:w-auto">
               <a 
-                href="https://adpo-health-agent-dashboard.vercel.app/" 
+                href="https://adpo-dashboard-6kwsju4cmq-uc.a.run.app/" 
                 target="_blank" 
                 rel="noreferrer" 
                 className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold tracking-widest uppercase text-[11px] rounded transition-all print:bg-blue-50 print:border print:border-blue-200 print:text-blue-800 print:shadow-none"
               >
-                Open Dashboard (Vercel) <ExternalLink size={14} className="print:hidden" />
+                Open Live App (Streamlit) <ExternalLink size={14} className="print:hidden" />
               </a>
             </div>
           </div>
@@ -172,7 +177,7 @@ export default function App() {
               <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5 print:text-black" />
               <div className="text-xs text-amber-800 leading-relaxed print:text-black">
                 <strong className="block mb-1 text-amber-900 print:text-black uppercase tracking-wide">GCP Access Permissions Required</strong>
-                While the <strong>Vercel Dashboard</strong> is publicly accessible to anyone, the specific <strong>Google Cloud Console links</strong> below (Firestore, Cloud Build, Metrics) will <span className="font-semibold underline">still require explicit IAM access</span> to the <code className="bg-amber-100/50 px-1 py-0.5 rounded font-mono text-[10px] border border-amber-200 print:border-slate-300 print:bg-white text-amber-900 print:text-black">adpo-healthcare-agent</code> project. Hosting the dashboard on Vercel does not bypass Google Cloud's internal console security.
+                While the <strong>Main Streamlit Application</strong> may be accessible, the specific <strong>Google Cloud Console links</strong> below (Firestore, Cloud Build, Metrics) will <span className="font-semibold underline">require explicit IAM access</span> to the <code className="bg-amber-100/50 px-1 py-0.5 rounded font-mono text-[10px] border border-amber-200 print:border-slate-300 print:bg-white text-amber-900 print:text-black">adpo-healthcare-agent</code> project to view resources directly.
               </div>
             </div>
 
@@ -182,8 +187,8 @@ export default function App() {
                 <a href="https://github.com/vinod1rai249-max/adpo-agent" target="_blank" rel="noreferrer" className="text-xs font-mono text-slate-600 truncate underline hover:text-blue-600">vinod1rai249-max/adpo-agent</a>
               </div>
               <div className="flex flex-col p-4 bg-white border border-slate-200 rounded-md shadow-sm transition hover:shadow-md border-l-4 border-l-blue-500">
-                <span className="text-[10px] text-blue-600 font-bold uppercase mb-2 flex items-center gap-1.5"><ExternalLink size={14}/> Live Dashboard URL (Public)</span>
-                <a href="https://adpo-health-agent-dashboard.vercel.app/" target="_blank" rel="noreferrer" className="text-xs font-mono text-slate-600 truncate underline hover:text-blue-600">adpo-health-agent-dashboard.vercel.app</a>
+                <span className="text-[10px] text-blue-600 font-bold uppercase mb-2 flex items-center gap-1.5"><ExternalLink size={14}/> Main Streamlit App</span>
+                <a href="https://adpo-dashboard-6kwsju4cmq-uc.a.run.app/" target="_blank" rel="noreferrer" className="text-xs font-mono text-slate-600 truncate underline hover:text-blue-600">adpo-dashboard.a.run.app</a>
               </div>
               <div className="flex flex-col p-4 bg-white border border-slate-200 rounded-md shadow-sm transition hover:shadow-md">
                 <span className="text-[10px] text-blue-600 font-bold uppercase mb-2 flex items-center gap-1.5"><Database size={14}/> Firestore Database</span>
@@ -208,8 +213,10 @@ export default function App() {
                 { file: 'audit.py', desc: 'Audit logger – writes every agent action to Firestore.' },
                 { file: 'app.py', desc: 'FastAPI server – receives Pub/Sub messages.' },
                 { file: 'seed_rules.py', desc: 'Setup script – loads initial reflex rules into Firestore.' },
-                { file: 'dashboard.py', desc: 'Streamlit UI – manual input, explanations, audit explorer.' },
-                { file: 'test_data/*.py', desc: 'Generates & uploads synthetic FHIR patients.' }
+                { file: 'streamlit_app.py', desc: 'Streamlit UI – manual input, explanations, audit explorer.' },
+                { file: 'explainer.py', desc: 'LLM integration – uses Vertex AI to explain reflex actions.' },
+                { file: 'test_data/generate_test_data.py', desc: 'Generates synthetic FHIR patients.' },
+                { file: 'test_data/load_test_data.py', desc: 'Uploads synthetic patients and observations.' }
               ].map((item, idx) => (
                 <div key={idx} className="flex items-start gap-4 p-4 bg-slate-50 border border-slate-100 rounded-md print:border-slate-300">
                   <FileText className="text-blue-600 shrink-0 mt-0.5 print:text-black" size={16} />
@@ -219,6 +226,66 @@ export default function App() {
                   </div>
                 </div>
               ))}
+            </div>
+
+            <div className="mt-10">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2 flex items-center gap-2">
+                <Activity size={18} className="text-blue-600 print:text-black" />
+                Core Decisioning & AI Logic
+              </h4>
+              <ul className="space-y-4">
+                <li className="flex items-start gap-4 p-4 bg-slate-50 border border-slate-100 rounded-md print:border-slate-300 border-l-4 border-l-orange-500">
+                  <Code size={16} className="text-orange-500 mt-0.5 print:text-black shrink-0" />
+                  <span className="text-sm font-medium text-slate-600 print:text-black">
+                    <strong className="text-slate-800 print:text-black block mb-1">Clinical Decision Rule Engine (<code className="bg-white border border-slate-200 px-1 py-0.5 rounded text-[10px] font-mono">lab_rules.py</code>)</strong>
+                    Contains the deterministic reasoning map. It checks upper/lower bounds for specific LOINC codes (e.g., verifying if a Potassium level &gt; 6.0). If an observation exceeds thresholds, it outputs the protocol to trigger.
+                  </span>
+                </li>
+                <li className="flex items-start gap-4 p-4 bg-slate-50 border border-slate-100 rounded-md print:border-slate-300 border-l-4 border-l-indigo-500">
+                  <Database size={16} className="text-indigo-500 mt-0.5 print:text-black shrink-0" />
+                  <span className="text-sm font-medium text-slate-600 print:text-black">
+                    <strong className="text-slate-800 print:text-black block mb-1">Vertex AI LLM Explanations (<code className="bg-white border border-slate-200 px-1 py-0.5 rounded text-[10px] font-mono">explainer.py</code>)</strong>
+                    Powers the human-readable insights. After the deterministic engine makes a decision, this file uses Google Vertex AI's generative language models to produce a rich clinical explanation, translating the raw trigger into a contextual clinical narrative.
+                  </span>
+                </li>
+                <li className="flex items-start gap-4 p-4 bg-slate-50 border border-slate-100 rounded-md print:border-slate-300 border-l-4 border-l-green-500">
+                  <Activity size={16} className="text-green-500 mt-0.5 print:text-black shrink-0" />
+                  <span className="text-sm font-medium text-slate-600 print:text-black">
+                    <strong className="text-slate-800 print:text-black block mb-1">Agent Workflow Orchestrator (<code className="bg-white border border-slate-200 px-1 py-0.5 rounded text-[10px] font-mono">agent.py</code>)</strong>
+                    Acts as the "Brain" orchestrator. When the FastAPI server pushes a new lab event, this script connects the FHIR connector, queries the <code className="bg-white border border-slate-200 px-1 py-0.5 rounded text-[10px] font-mono">lab_rules.py</code> engine for rule hits, invokes <code className="bg-white border border-slate-200 px-1 py-0.5 rounded text-[10px] font-mono">explainer.py</code> for the AI insights, and logs everything.
+                  </span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="mt-10">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2 flex items-center gap-2">
+                <Server size={18} className="text-purple-600 print:text-black" />
+                Containerization & Deployment
+              </h4>
+              <ul className="space-y-4">
+                <li className="flex items-start gap-4 p-4 bg-slate-50 border border-slate-100 rounded-md print:border-slate-300">
+                  <Code size={16} className="text-purple-500 mt-0.5 print:text-black shrink-0" />
+                  <span className="text-sm font-medium text-slate-600 print:text-black">
+                    <strong className="text-slate-800 print:text-black block mb-1">Dockerfiles (<code className="bg-white border border-slate-200 px-1 py-0.5 rounded text-[10px] font-mono">Dockerfile</code>, <code className="bg-white border border-slate-200 px-1 py-0.5 rounded text-[10px] font-mono">Dockerfile.streamlit</code>)</strong>
+                    Two independent deployment containers. The FastAPI Agent runs in one container (Dockerfile), while the Streamlit UI dashboard runs separately (Dockerfile.streamlit).
+                  </span>
+                </li>
+                <li className="flex items-start gap-4 p-4 bg-slate-50 border border-slate-100 rounded-md print:border-slate-300">
+                  <Activity size={16} className="text-purple-500 mt-0.5 print:text-black shrink-0" />
+                  <span className="text-sm font-medium text-slate-600 print:text-black">
+                    <strong className="text-slate-800 print:text-black block mb-1">Cloud Build CI/CD (<code className="bg-white border border-slate-200 px-1 py-0.5 rounded text-[10px] font-mono">cloudbuild.yaml</code>, <code className="bg-white border border-slate-200 px-1 py-0.5 rounded text-[10px] font-mono">cloudbuild-streamlit.yaml</code>)</strong>
+                    Automates building the Docker images and pushing them to Google Artifact Registry upon source code updates.
+                  </span>
+                </li>
+                <li className="flex items-start gap-4 p-4 bg-slate-50 border border-slate-100 rounded-md print:border-slate-300">
+                  <Server size={16} className="text-purple-500 mt-0.5 print:text-black shrink-0" />
+                  <span className="text-sm font-medium text-slate-600 print:text-black">
+                    <strong className="text-slate-800 print:text-black block mb-1">Cloud Run Serverless Hosting</strong>
+                    Fully serverless execution scaling down to zero. It handles Pub/Sub pushes for the background LLM agent and serves the Streamlit dashboard on demand.
+                  </span>
+                </li>
+              </ul>
             </div>
           </div>
         </section>
