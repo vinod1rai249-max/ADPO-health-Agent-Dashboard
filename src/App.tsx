@@ -5,17 +5,19 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { Download, Github, Database, FileText, Code, CheckCircle, Server, Activity, ShieldCheck, ExternalLink, AlertTriangle, Loader2 } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import * as htmlToImage from 'html-to-image';
 import jsPDF from 'jspdf';
 
 export default function App() {
   const contentRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [pdfDataUrl, setPdfDataUrl] = useState<string | null>(null);
 
   const handleDownloadPdf = async () => {
     if (!contentRef.current) return;
     
     setIsGenerating(true);
+    setPdfDataUrl(null);
     try {
       const element = contentRef.current;
       
@@ -23,18 +25,17 @@ export default function App() {
       const actionsBar = document.getElementById('actions-bar');
       if (actionsBar) actionsBar.style.display = 'none';
       
-      const canvas = await html2canvas(element, { 
-        scale: 2, // Higher scale for better resolution
-        useCORS: true,
+      const originalWidth = element.offsetWidth;
+      const originalHeight = element.offsetHeight;
+
+      const imgDataUrl = await htmlToImage.toJpeg(element, { 
+        quality: 0.95,
         backgroundColor: '#f8fafc', // match bg-slate-50
-        logging: false,
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight
+        pixelRatio: 2,
       });
       
       if (actionsBar) actionsBar.style.display = 'flex';
       
-      const imgData = canvas.toDataURL('image/jpeg', 1.0);
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
@@ -45,25 +46,34 @@ export default function App() {
       const pdfHeight = pdf.internal.pageSize.getHeight();
       
       const renderWidth = pdfWidth;
-      const renderHeight = (canvas.height * renderWidth) / canvas.width;
+      const renderHeight = (originalHeight * renderWidth) / originalWidth;
       
       let position = 0;
       let heightLeft = renderHeight;
       
-      pdf.addImage(imgData, 'JPEG', 0, position, renderWidth, renderHeight);
+      pdf.addImage(imgDataUrl, 'JPEG', 0, position, renderWidth, renderHeight);
       heightLeft -= pdfHeight;
       
       while (heightLeft > 0) {
         position = heightLeft - renderHeight;
         pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, renderWidth, renderHeight);
+        pdf.addImage(imgDataUrl, 'JPEG', 0, position, renderWidth, renderHeight);
         heightLeft -= pdfHeight;
       }
       
-      pdf.save('ADPO_Healthcare_Documentation.pdf');
+      // We generate the Blob URI so we can offer a direct link
+      const blob = pdf.output('blob');
+      const blobUrl = URL.createObjectURL(blob);
+      setPdfDataUrl(blobUrl);
+      
+      // Attempt automatic download
+      if (window.self === window.top) {
+        pdf.save('ADPO_Healthcare_Documentation.pdf');
+      }
+      
     } catch (error) {
       console.error('Error generating PDF:', error);
-      alert('Generating PDF failed. Please try opening the app in a new tab and printing to PDF.');
+      alert('Generating PDF failed. You may need to open the app in a new tab first, or there may be cross-origin restrictions.');
     } finally {
       setIsGenerating(false);
     }
@@ -71,6 +81,47 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans py-8 px-4 sm:px-6 lg:px-8 print:bg-white print:py-0 print:px-0 box-border">
+      {/* PDF Ready Modal */}
+      {pdfDataUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm print:hidden">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
+            <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+              <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                <CheckCircle size={18} className="text-green-600" /> 
+                PDF Generated Successfully!
+              </h3>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-slate-600 mb-6">
+                Your documentation has been captured. If the download didn't start automatically, please click the button below to download your file.
+              </p>
+              
+              <div className="flex flex-col gap-3">
+                <a 
+                  href={pdfDataUrl}
+                  download="ADPO_Healthcare_Documentation.pdf"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors shadow-sm"
+                  onClick={() => {
+                     // Optional auto close when they click
+                     setTimeout(() => setPdfDataUrl(null), 2000);
+                  }}
+                >
+                  <Download size={18} />
+                  Download Documentation PDF
+                </a>
+                
+                <button 
+                  onClick={() => setPdfDataUrl(null)}
+                  className="w-full px-4 py-3 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-50 rounded-md transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div ref={contentRef} className="max-w-5xl mx-auto space-y-10 print:space-y-6 bg-slate-50 pb-8">
         
         {/* Actions Bar - Hidden on print */}
