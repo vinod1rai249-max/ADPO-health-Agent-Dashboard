@@ -25,16 +25,34 @@ export default function App() {
       const actionsBar = document.getElementById('actions-bar');
       if (actionsBar) actionsBar.style.display = 'none';
       
-      const originalWidth = element.offsetWidth;
-      const originalHeight = element.offsetHeight;
+      // Force a consistent width for PDF capture so it always looks like desktop
+      const previousCssText = element.style.cssText;
+      element.style.width = '1024px';
+      element.style.maxWidth = '1024px';
+      element.style.padding = '40px'; 
+      element.style.boxSizing = 'border-box';
+      element.style.margin = '0 auto';
+      
+      // allow layout to recalculate
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      const captureWidth = 1024;
+      const captureHeight = element.scrollHeight;
 
       const imgDataUrl = await htmlToImage.toJpeg(element, { 
         quality: 0.95,
         backgroundColor: '#f8fafc', // match bg-slate-50
         pixelRatio: 2,
+        width: captureWidth,
+        height: captureHeight,
+        style: {
+          margin: '0', // removes auto-margin shift bug in html-to-image
+          transform: 'none' // prevents any scale issues
+        }
       });
       
       if (actionsBar) actionsBar.style.display = 'flex';
+      element.style.cssText = previousCssText; // Revert all inline styles
       
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -46,7 +64,7 @@ export default function App() {
       const pdfHeight = pdf.internal.pageSize.getHeight();
       
       const renderWidth = pdfWidth;
-      const renderHeight = (originalHeight * renderWidth) / originalWidth;
+      const renderHeight = (captureHeight * renderWidth) / captureWidth;
       
       let position = 0;
       let heightLeft = renderHeight;
@@ -68,7 +86,7 @@ export default function App() {
       
       // Attempt automatic download
       if (window.self === window.top) {
-        pdf.save('ADPO_Healthcare_Documentation.pdf');
+        pdf.save('ADPO Healthcare_user_manual.pdf');
       }
       
     } catch (error) {
@@ -99,7 +117,7 @@ export default function App() {
               <div className="flex flex-col gap-3">
                 <a 
                   href={pdfDataUrl}
-                  download="ADPO_Healthcare_Documentation.pdf"
+                  download="ADPO Healthcare_user_manual.pdf"
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors shadow-sm"
                   onClick={() => {
                      // Optional auto close when they click
@@ -158,7 +176,7 @@ export default function App() {
                 <span className="px-2 py-0.5 bg-blue-600 text-white text-[10px] font-bold tracking-wider uppercase rounded-sm">Project Asset</span>
                 <span className="text-slate-400 text-[11px] font-bold uppercase tracking-widest">Documentation Portal</span>
               </div>
-              <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 mb-2">ADPO Healthcare Agent</h1>
+              <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 mb-2">ADPO Healthcare application</h1>
               <h2 className="text-xl md:text-2xl font-light text-slate-600 mb-3 block">Autonomous Diagnostic Path Orchestrator</h2>
               <p className="text-slate-500 font-medium text-sm">Technical Portfolio & Deployment Specification Summary</p>
             </div>
