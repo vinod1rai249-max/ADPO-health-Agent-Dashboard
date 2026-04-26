@@ -3,27 +3,95 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
-import { Download, Github, Database, FileText, Code, CheckCircle, Server, Activity, ShieldCheck, ExternalLink } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Download, Github, Database, FileText, Code, CheckCircle, Server, Activity, ShieldCheck, ExternalLink, AlertTriangle, Loader2 } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 export default function App() {
-  const handlePrint = () => {
-    window.print();
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handlePrint = async () => {
+    if (!contentRef.current) return;
+    
+    setIsGenerating(true);
+    try {
+      const element = contentRef.current;
+      const actionsBar = document.getElementById('actions-bar');
+      if (actionsBar) actionsBar.style.display = 'none';
+      
+      const canvas = await html2canvas(element, { 
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff'
+      });
+      
+      if (actionsBar) actionsBar.style.display = 'flex';
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      const renderWidth = pdfWidth;
+      const renderHeight = (canvas.height * renderWidth) / canvas.width;
+      
+      let position = 0;
+      let heightLeft = renderHeight;
+      
+      pdf.addImage(imgData, 'PNG', 0, position, renderWidth, renderHeight);
+      heightLeft -= pdfHeight;
+      
+      while (heightLeft > 0) {
+        position = heightLeft - renderHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, renderWidth, renderHeight);
+        heightLeft -= pdfHeight;
+      }
+      
+      pdf.save('ADPO_Healthcare_Documentation.pdf');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      window.print(); // Fallback
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans py-8 px-4 sm:px-6 lg:px-8 print:bg-white print:py-0 print:px-0 box-border">
-      <div className="max-w-5xl mx-auto space-y-10 print:space-y-6">
+      <div ref={contentRef} className="max-w-5xl mx-auto space-y-10 print:space-y-6">
         
         {/* Actions Bar - Hidden on print */}
-        <div className="flex justify-end print:hidden">
-          <button 
-            onClick={handlePrint}
-            className="inline-flex items-center gap-2 px-6 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-full text-[11px] font-bold tracking-wide shadow-lg shadow-slate-200 transition-colors uppercase"
-          >
-            <Download size={16} />
-            Download Full Documentation (PDF)
-          </button>
+        <div id="actions-bar" className="flex flex-col items-end gap-2 print:hidden mb-2">
+          <div className="flex items-center gap-3">
+            <a 
+              href="https://adpo-health-agent-dashboard.vercel.app/"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-[11px] font-bold tracking-wide shadow-lg shadow-blue-200 transition-colors uppercase"
+            >
+              <ExternalLink size={16} />
+              Open Live Dashboard (Vercel)
+            </a>
+            <button 
+              onClick={handlePrint}
+              disabled={isGenerating}
+              className="inline-flex items-center gap-2 px-6 py-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-full text-[11px] font-bold tracking-wide shadow-lg shadow-slate-200 transition-colors uppercase"
+            >
+              {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+              {isGenerating ? 'Generating PDF...' : 'Download PDF directly'}
+            </button>
+          </div>
+          <p className="text-[10px] text-slate-500 font-medium">
+            *Downloads directly. If nothing happens, click the ↗️ "Open in new tab" icon in AI Studio first.
+          </p>
         </div>
 
         {/* Cover Page Section */}
@@ -58,7 +126,7 @@ export default function App() {
             </div>
             <div>
               <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1.5">Team Members</div>
-              <div className="text-sm font-medium text-slate-700">Vinod & Madhukar Boddukuri</div>
+              <div className="text-sm font-medium text-slate-700">Vinod Rai & Madhukar Boddukuri</div>
             </div>
           </div>
         </header>
@@ -74,14 +142,23 @@ export default function App() {
           
           <div className="p-6 md:p-8">
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Infrastructure References</h4>
+            
+            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3 print:bg-transparent print:border-slate-300 print:text-slate-800">
+              <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5 print:text-black" />
+              <div className="text-xs text-amber-800 leading-relaxed print:text-black">
+                <strong className="block mb-1 text-amber-900 print:text-black uppercase tracking-wide">GCP Access Permissions Required</strong>
+                While the <strong>Vercel Dashboard</strong> is publicly accessible to anyone, the specific <strong>Google Cloud Console links</strong> below (Firestore, Cloud Build, Metrics) will <span className="font-semibold underline">still require explicit IAM access</span> to the <code className="bg-amber-100/50 px-1 py-0.5 rounded font-mono text-[10px] border border-amber-200 print:border-slate-300 print:bg-white text-amber-900 print:text-black">adpo-healthcare-agent</code> project. Hosting the dashboard on Vercel does not bypass Google Cloud's internal console security.
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
               <div className="flex flex-col p-4 bg-white border border-slate-200 rounded-md shadow-sm transition hover:shadow-md">
                 <span className="text-[10px] text-blue-600 font-bold uppercase mb-2 flex items-center gap-1.5"><Github size={14}/> ADPO Repository</span>
                 <a href="https://github.com/vinod1rai249-max/adpo-agent" target="_blank" rel="noreferrer" className="text-xs font-mono text-slate-600 truncate underline hover:text-blue-600">vinod1rai249-max/adpo-agent</a>
               </div>
-              <div className="flex flex-col p-4 bg-white border border-slate-200 rounded-md shadow-sm transition hover:shadow-md">
-                <span className="text-[10px] text-blue-600 font-bold uppercase mb-2 flex items-center gap-1.5"><ExternalLink size={14}/> Live Dashboard URL</span>
-                <a href="https://adpo-dashboard-6kwsju4cmq-uc.a.run.app/" target="_blank" rel="noreferrer" className="text-xs font-mono text-slate-600 truncate underline hover:text-blue-600">adpo-dashboard.a.run.app</a>
+              <div className="flex flex-col p-4 bg-white border border-slate-200 rounded-md shadow-sm transition hover:shadow-md border-l-4 border-l-blue-500">
+                <span className="text-[10px] text-blue-600 font-bold uppercase mb-2 flex items-center gap-1.5"><ExternalLink size={14}/> Live Dashboard URL (Public)</span>
+                <a href="https://adpo-health-agent-dashboard.vercel.app/" target="_blank" rel="noreferrer" className="text-xs font-mono text-slate-600 truncate underline hover:text-blue-600">adpo-health-agent-dashboard.vercel.app</a>
               </div>
               <div className="flex flex-col p-4 bg-white border border-slate-200 rounded-md shadow-sm transition hover:shadow-md">
                 <span className="text-[10px] text-blue-600 font-bold uppercase mb-2 flex items-center gap-1.5"><Database size={14}/> Firestore Database</span>
@@ -147,9 +224,9 @@ export default function App() {
                   <div className="text-sm font-mono text-white print:text-slate-800 bg-slate-900 px-3 py-1.5 rounded-md print:bg-white border border-slate-700 print:border-slate-200">test_data/</div>
                 </div>
                 <div className="flex-1 bg-slate-800 p-4 rounded-lg text-center flex flex-col items-center justify-center print:border print:border-slate-200 print:bg-slate-50">
-                  <div className="text-[10px] uppercase text-slate-500 font-bold mb-3 print:text-slate-600 tracking-wider">Access Link</div>
-                  <a href="https://github.com/vinod1rai249-max/adpo-agent/tree/main/test_data" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold tracking-widest uppercase rounded shadow transition-colors print:bg-transparent print:text-blue-700 print:px-0 print:shadow-none">
-                    View Synthetic Dataset
+                  <div className="text-[10px] uppercase text-slate-500 font-bold mb-3 print:text-slate-600 tracking-wider">Access Link (GCP Console)</div>
+                  <a href="https://console.cloud.google.com/firestore/databases/-default-/data/panel/audit_events/82BkP0HGxyu5oeeUEJKD?authuser=1&project=adpo-healthcare-agent&supportedpurview=project,folder" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold tracking-widest uppercase rounded shadow transition-colors print:bg-transparent print:text-blue-700 print:px-0 print:shadow-none text-center max-w-[200px] leading-tight">
+                    View Synthetic Dataset in Firestore
                   </a>
                 </div>
               </div>
