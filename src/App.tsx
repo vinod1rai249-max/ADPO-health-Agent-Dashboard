@@ -131,6 +131,31 @@ export default function App() {
           </div>
         </header>
 
+        {/* Feature Banner: Live Application */}
+        <section className="bg-slate-900 rounded-xl border border-slate-800 shadow-md overflow-hidden text-white print:border-slate-300 print:bg-white print:text-black">
+          <div className="p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 border-l-4 border-blue-500">
+            <div className="flex-1">
+              <h3 className="text-lg font-bold mb-2 flex items-center gap-2 text-white print:text-black">
+                <Activity size={20} className="text-blue-400 print:text-blue-600" /> 
+                Explore the Live Application
+              </h3>
+              <p className="text-slate-400 text-sm leading-relaxed print:text-slate-600 max-w-3xl">
+                Experience the ADPO Clinical Reflex Dashboard in real-time. The portal provides full audit visibility, ServiceRequest tracking, Vertex AI-powered clinical explanations, and a Live API Tester to interactively simulate patient lab results.
+              </p>
+            </div>
+            <div className="shrink-0 w-full md:w-auto">
+              <a 
+                href="https://adpo-health-agent-dashboard.vercel.app/" 
+                target="_blank" 
+                rel="noreferrer" 
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold tracking-widest uppercase text-[11px] rounded transition-all print:bg-blue-50 print:border print:border-blue-200 print:text-blue-800 print:shadow-none"
+              >
+                Open Dashboard (Vercel) <ExternalLink size={14} className="print:hidden" />
+              </a>
+            </div>
+          </div>
+        </section>
+
         {/* Section 1: Source Code */}
         <section id="source-code" className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden print:border-none print:shadow-none print:break-inside-avoid">
           <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 print:bg-transparent print:border-b-2 print:border-slate-800 print:px-0">
@@ -177,12 +202,14 @@ export default function App() {
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Architecture & Folder Structure</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[
-                { file: 'agent.py', desc: 'ADK orchestrator – the AI brain.' },
-                { file: 'lab_rules.py', desc: 'Rule engine – looks up Firestore LOINC rules.' },
+                { file: 'agent.py', desc: 'ADK orchestrator – the AI brain defining rules and tools.' },
+                { file: 'lab_rules.py', desc: 'Rule engine – evaluates LOINC rules & numeric thresholds.' },
                 { file: 'fhir_client.py', desc: 'FHIR connector – reads/writes FHIR resources.' },
-                { file: 'audit.py', desc: 'Audit logger – writes to Firestore.' },
+                { file: 'audit.py', desc: 'Audit logger – writes every agent action to Firestore.' },
                 { file: 'app.py', desc: 'FastAPI server – receives Pub/Sub messages.' },
-                { file: 'test_data/', desc: 'Generates 8 synthetic FHIR patients.' }
+                { file: 'seed_rules.py', desc: 'Setup script – loads initial reflex rules into Firestore.' },
+                { file: 'dashboard.py', desc: 'Streamlit UI – manual input, explanations, audit explorer.' },
+                { file: 'test_data/*.py', desc: 'Generates & uploads synthetic FHIR patients.' }
               ].map((item, idx) => (
                 <div key={idx} className="flex items-start gap-4 p-4 bg-slate-50 border border-slate-100 rounded-md print:border-slate-300">
                   <FileText className="text-blue-600 shrink-0 mt-0.5 print:text-black" size={16} />
