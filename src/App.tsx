@@ -189,18 +189,14 @@ export default function App() {
             </div>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div>
+          <div className="flex justify-between items-start gap-6">
+            <div className="text-left">
               <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1.5">Domain</div>
               <div className="text-sm font-medium text-slate-700">Healthcare AI / Clinical Laboratory Automation</div>
             </div>
-            <div>
+            <div className="text-right">
               <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1.5">Platform</div>
               <div className="text-sm font-medium text-slate-700">Google Cloud Platform (GCP)</div>
-            </div>
-            <div>
-              <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1.5">Team Members</div>
-              <div className="text-sm font-medium text-slate-700">Vinod Rai & Madhukar Boddukuri</div>
             </div>
           </div>
         </header>
